@@ -1,0 +1,41 @@
+#!/usr/bin/bpftrace
+/* Log futex() activity in a certain process and optionally a certain mutex (uaddr)
+ */
+
+BEGIN {
+    @targetpid = $1;
+    @targetuaddr = $2;
+
+    printf("Tracing futex() calls from PID %d\n", @targetpid);
+    if(@targetuaddr) {
+        printf("  with uaddr=%p\n", @targetuaddr);
+    }
+
+    @modes[0] = "WAIT";
+    @modes[1] = "WAKE";
+    @modes[2] = "FD";
+    @modes[3] = "REQUEUE";
+    @modes[4] = "CMP_REQUEUE";
+    @modes[5] = "WAKE_OP";
+    @modes[6] = "LOCK_PI";
+    @modes[7] = "UNLOCK_PI";
+    @modes[8] = "TRYLOCK_PI";
+    @modes[9] = "WAIT_BITSET";
+    @modes[10] = "WAKE_BITSET";
+    @modes[11] = "WAIT_REQUEUE_PI";
+    @modes[12] = "CMP_REQUEUE_PI";
+}
+
+END {
+    delete(@targetpid);
+    delete(@targetuaddr);
+    clear(@modes);
+}
+
+tracepoint:syscalls:sys_enter_futex /pid==@targetpid && (!@targetuaddr || @targetuaddr==args->uaddr || @targetuaddr==args->uaddr2)/
+{
+    $op = args->op&0x7f;
+    $name = @modes[$op];
+    printf("futex(op=%s(0x%x), val=%u uaddr=%p, uaddr2=%p, val3=%u)\n",
+           $name, args->op, args->val, args->uaddr, args->uaddr2, args->val3);
+}
