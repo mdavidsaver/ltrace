@@ -1,0 +1,96 @@
+# Measure lifetime of short-lived memory allocations
+
+global starting_at
+global entry_time
+global alloc_at
+global addr
+global alloc_time
+global untracked
+
+# systemtap 5.3 does not seem to correctly handle .return alias suffixes with uprobes.
+# so must double up definitions :(
+probe malloc = process.library("*libc.so.*").function("malloc"),
+               process.library("*libc.so.*").function("calloc") {}
+probe mallocret = process.library("*libc.so.*").function("malloc").return,
+               process.library("*libc.so.*").function("calloc").return {}
+probe realloc = process.library("*libc.so.*").function("realloc"),
+                process.library("*libc.so.*").function("reallocarray") {}
+probe reallocret = process.library("*libc.so.*").function("realloc").return,
+                process.library("*libc.so.*").function("reallocarray").return {}
+probe free = process.library("*libc.so.*").function("free") {}
+probe freeret = process.library("*libc.so.*").function("free").return {}
+
+probe malloc {
+    t = tid ()
+    entry_time[t] = gettimeofday_us()
+}
+probe mallocret {
+    t = tid ()
+    if($return!=0) {
+        alloc_at[$return] = entry_time[t]
+    }
+    delete entry_time[t]
+}
+
+probe realloc {
+    ptr = u64_arg(0)
+    t = tid ()
+    if(ptr==0) {
+        # treat as new alloc
+        entry_time[t] = gettimeofday_us()
+    } else {
+        # update previous alloc
+        addr[t] = ptr
+    }
+}
+probe reallocret {
+    if($return==0) next
+    t = tid ()
+    ptr = addr[t]
+    if(ptr) {
+        start = alloc_at[ptr]
+        delete alloc_at[ptr]
+        delete addr[t]
+        alloc_at[$return] = start
+    }
+}
+
+probe free {
+    t = tid ()
+    addr[t] = $mem
+}
+probe freeret {
+    fin = gettimeofday_us()
+    t = tid ()
+    ptr = addr[t]
+    start = alloc_at[ptr]
+    delete alloc_at[ptr]
+    delete addr[t]
+    if(start) {
+        # tracked allocation from alloc to free
+        lifetime = fin-start
+        alloc_time <<< lifetime
+# uncomment and adjust threshold to see a sampling of short allocations
+#        if(lifetime<=10) {
+#            printf("XXX %d\n", lifetime)
+#            print_ubacktrace()
+#        }
+    } else {
+        untracked++
+    }
+}
+
+probe begin {
+    printf("Start with target=%d...\n", target())
+    starting_at = gettimeofday_us()
+}
+probe end {
+    printf("Run for %d us\n", gettimeofday_us()-starting_at)
+    printf("untracked %d\n", untracked)
+    printf("tracked %d allocs min %d avg %d max %d\n",
+        @count(alloc_time),
+        @min(alloc_time),
+        @avg(alloc_time),
+        @max(alloc_time))
+    print(@hist_log(alloc_time))
+}
