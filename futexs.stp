@@ -1,4 +1,4 @@
-# https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/6/html/systemtap_beginners_guide/futexcontentionsect
+# https://sourceware.org/systemtap/SystemTap_Beginners_Guide/futexcontentionsect.html
 # with adaptions for more recent kernel (cf. FUTEX_CMD_MASK)
 
 # This script tries to identify contended user-space locks by hooking
