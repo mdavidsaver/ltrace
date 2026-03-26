@@ -33,7 +33,7 @@ probe mallocret {
 }
 
 probe realloc {
-    ptr = u64_arg(0)
+    ptr = pointer_arg(1)
     t = tid ()
     if(ptr==0) {
         # treat as new alloc
@@ -44,20 +44,27 @@ probe realloc {
     }
 }
 probe reallocret {
-    if($return==0) next
-    t = tid ()
+    etime = entry_time[t]
     ptr = addr[t]
-    if(ptr) {
+    delete entry_time[t]
+    delete addr[t]
+    if($return==0) {
+        delete addr[t]
+        next
+    }
+    t = tid ()
+    if(ptr) { # update
         start = alloc_at[ptr]
         delete alloc_at[ptr]
-        delete addr[t]
         alloc_at[$return] = start
+    } else { # new
+        alloc_at[$return] = etime
     }
 }
 
 probe free {
     t = tid ()
-    addr[t] = $mem
+    addr[t] = pointer_arg(1)
 }
 probe freeret {
     fin = gettimeofday_us()
