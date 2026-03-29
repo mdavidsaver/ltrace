@@ -106,7 +106,7 @@ dblsr '' 1
 ## epicsThreadShowAll
 
 The `LWP ID` shows the Linux thread ID for those threads created through the epicsThread API.
-eg. `[324387]` is the `dbCaLink` thread.
+eg. `[320803]` is the `dbCaLink` thread.
 
 ```
 epics> epicsThreadShowAll 
@@ -137,12 +137,12 @@ epics> epicsThreadShowAll
       CAS-beacon 0x55d45d984d80   320816     17       0       OK
       qsrvSingle 0x55d45d987240   320817     19       0       OK
        qsrvGroup 0x55d45d987760   320818     19       0       OK
-```
+```0x55d45d81b670
 
 ## epicsMutexShowAll
 
 The futex addresses (`uaddr=0x...`) for mutex allocated through the epicsMutex API are shown by `epicsMutexShowAll`.
-eg. `uaddr=0x55d45d81b670` is associated with an epicsMutex `0x55d45d9586b0` allocated at `dbLock.c:86`,
+eg. `uaddr=0x55d45d9586d0` is associated with an epicsMutex `0x55d45d9586b0` allocated at `dbLock.c:86`,
 which in this instance is associated with a database record lockset,
 for which we refer to the `dblsr` output.
 
@@ -238,12 +238,12 @@ lock uaddr=0x55d45d9586d0 -> epicsMutexId 0x55d45d9586b0 -> Lock Set ...
 
 ```
 Contention with context switch
-[dbCaLink] Lock Set ... contended 366 times, 67 avg 35734 max us
-[scan-1] Lock Set ... contended 1 times, 39 avg 1000013 max us
+[dbCaLink] Lock Set 3 contended 366 times, 67 avg 35734 max us
+[scan-1] Lock Set 3 contended 1 times, 39 avg 1000013 max us
 
 Contention without context switch
-[dbCaLink] Lock Set ... contended 8879 times, 67 avg 383 max us
-[scan-1] Lock Set ... contended 2 times, 39 avg 54 max us
+[dbCaLink] Lock Set 3 contended 8879 times, 67 avg 383 max us
+[scan-1] Lock Set 3 contended 2 times, 39 avg 54 max us
 ```
 
 So we can see that the contention is between the CA link worker thread (`dbCaLink`)
